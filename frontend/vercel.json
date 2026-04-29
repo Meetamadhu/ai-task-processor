@@ -4,5 +4,11 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build && node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.cpSync('build','dist',{recursive:true})\"",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://ai-task-processor-wn65.onrender.com/api/$1"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

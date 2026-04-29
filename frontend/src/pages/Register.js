@@ -35,12 +35,14 @@ function Register({ setIsAuthenticated }) {
       <div className="auth-card">
         <h1>Register</h1>
         {error && <div className="error-message">{error}</div>}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="on">
           <div className="form-group">
             <label htmlFor="name">Name:</label>
             <input
               type="text"
               id="name"
+              name="name"
+              autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -52,6 +54,8 @@ function Register({ setIsAuthenticated }) {
             <input
               type="email"
               id="email"
+              name="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -63,6 +67,8 @@ function Register({ setIsAuthenticated }) {
             <input
               type="password"
               id="password"
+              name="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

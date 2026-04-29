@@ -3,5 +3,11 @@
   "installCommand": "npm install --prefix frontend",
   "buildCommand": "npm run build --prefix frontend && node -e \"const fs=require('fs'); fs.rmSync('frontend/dist',{recursive:true,force:true}); fs.cpSync('frontend/build','frontend/dist',{recursive:true})\"",
   "outputDirectory": "frontend/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://ai-task-processor-wn65.onrender.com/api/$1"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

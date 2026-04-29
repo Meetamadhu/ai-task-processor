@@ -1,10 +1,26 @@
 // src/services/api.js
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+/**
+ * Default: same-origin `/api` on Vercel (rewrites proxy to Render — avoids CORS).
+ * Local dev: `http://localhost:5000/api` unless REACT_APP_API_URL is set.
+ * Override: set REACT_APP_API_URL to full URL (cross-origin; backend CORS must allow your UI).
+ */
+function resolveApiBaseUrl() {
+  const fromEnv = (process.env.REACT_APP_API_URL || '').trim().replace(/\/$/, '');
+  if (typeof window !== 'undefined') {
+    const { hostname, origin } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return fromEnv || 'http://localhost:5000/api';
+    }
+    if (fromEnv) return fromEnv;
+    return `${origin}/api`.replace(/\/$/, '');
+  }
+  return fromEnv || 'http://localhost:5000/api';
+}
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json'
   }
