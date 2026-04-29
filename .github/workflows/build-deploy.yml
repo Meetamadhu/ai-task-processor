@@ -61,8 +61,12 @@ jobs:
 
       - name: Set frontend build API URL
         id: fe_api
+        env:
+          VAR_URL: ${{ vars.REACT_APP_API_URL }}
+          SECRET_URL: ${{ secrets.REACT_APP_API_URL }}
         run: |
-          FE_URL="${{ vars.REACT_APP_API_URL }}"
+          FE_URL="$VAR_URL"
+          if [ -z "$FE_URL" ]; then FE_URL="$SECRET_URL"; fi
           if [ -z "$FE_URL" ]; then FE_URL="http://localhost:5000/api"; fi
           echo "react_app_api_url=$FE_URL" >> "$GITHUB_OUTPUT"
 

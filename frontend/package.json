@@ -9,6 +9,7 @@
     "react-router-dom": "^6.11.0"
   },
   "scripts": {
+    "prebuild": "node scripts/ensure-react-env.cjs",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
