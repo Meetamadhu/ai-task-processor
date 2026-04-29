@@ -1,0 +1,67 @@
+# Application .gitignore
+
+# Dependencies
+node_modules/
+yarn.lock
+pip-cache/
+
+# Environment variables (keep **/.env.example in Git as templates)
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.next/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary
+tmp/
+temp/
+
+# Redis dump
+dump.rdb
+
+# MongoDB
+*.mongodb
+
+# Secrets (never commit!)
+secrets/
+*.key
+*.pem
