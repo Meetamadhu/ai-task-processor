@@ -60,26 +60,30 @@ function normalizeOrigin(url) {
   return url.trim().replace(/\/$/, '');
 }
 
-function allowedFrontendOrigins() {
-  const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
-  return raw.split(',').map(normalizeOrigin).filter(Boolean);
-}
-
-/** Production + preview deploys on *.vercel.app (Origin must match browser exactly). */
+/** Production + preview deploys on *.vercel.app */
 function isVercelAppOrigin(origin) {
   const n = normalizeOrigin(origin);
   return /^https:\/\/.+\.vercel\.app$/i.test(n);
 }
 
-// Security middleware — CORP same-origin breaks browser fetches from Vercel → API
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({
+function mergeAllowedOrigins() {
+  const raw = [process.env.FRONTEND_URL || '', process.env.FRONTEND_EXTRA_ORIGINS || '']
+    .join(',');
+  const fromEnv = raw.split(',').map(normalizeOrigin).filter(Boolean);
+  if (fromEnv.length === 0) {
+    return ['http://localhost:3000'];
+  }
+  return fromEnv;
+}
+
+// CORS must run before Helmet — some Helmet defaults interfere with browser preflight handling.
+const corsOptions = {
   origin(origin, callback) {
     if (!origin) {
       return callback(null, true);
     }
     const n = normalizeOrigin(origin);
-    const allowed = allowedFrontendOrigins();
+    const allowed = mergeAllowedOrigins();
     if (allowed.includes(n)) {
       return callback(null, true);
     }
@@ -87,13 +91,25 @@ app.use(cors({
       return callback(null, true);
     }
     // eslint-disable-next-line no-console
-    console.warn(`CORS rejected Origin="${origin}"; set FRONTEND_URL on API or use a *.vercel.app URL. Allowed list: ${allowed.join(', ') || '(none)'}`);
+    console.warn(
+      `CORS rejected Origin="${origin}". FRONTEND_URL / FRONTEND_EXTRA_ORIGINS on Render: ${allowed.join(' | ')}`
+    );
     return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
-}));
+  maxAge: 86400,
+  optionsSuccessStatus: 204,
+};
+app.use(cors(corsOptions));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+  })
+);
 
 // Rate limiting (skip OPTIONS so CORS preflight is never rate-limited)
 const limiter = rateLimit({
