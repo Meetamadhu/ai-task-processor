@@ -1,5 +1,5 @@
 // src/pages/Dashboard.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { taskAPI } from '../services/api';
 import TaskForm from '../components/TaskForm';
@@ -12,19 +12,40 @@ function Dashboard() {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [user, setUser] = useState(null);
+  const [expandedLogTaskId, setExpandedLogTaskId] = useState(null);
+  const expandedLogTaskIdRef = useRef(null);
   const navigate = useNavigate();
 
-  const fetchTasks = useCallback(async () => {
+  const setLogPanelTaskId = useCallback((taskId) => {
+    expandedLogTaskIdRef.current = taskId;
+    setExpandedLogTaskId(taskId);
+  }, []);
+
+  const fetchTasks = useCallback(async (options = {}) => {
+    const silent = options.silent === true;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await taskAPI.getTasks(statusFilter || undefined);
-      setTasks(response.data.tasks);
+      const raw = response.data?.tasks;
+      const incoming = Array.isArray(raw) ? raw : [];
+      setTasks((prev) => {
+        const prevSafe = Array.isArray(prev) ? prev : [];
+        const exp = expandedLogTaskIdRef.current;
+        if (!exp) return incoming;
+        const expStr = String(exp);
+        if (incoming.some((t) => String(t._id) === expStr)) return incoming;
+        const ghost = prevSafe.find((t) => String(t._id) === expStr);
+        if (!ghost) return incoming;
+        return [ghost, ...incoming.filter((t) => String(t._id) !== expStr)];
+      });
       setError('');
     } catch (err) {
-      setError('Failed to fetch tasks');
+      if (!silent) {
+        setError('Failed to fetch tasks');
+      }
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [statusFilter]);
 
@@ -33,20 +54,26 @@ function Dashboard() {
     if (userData) {
       setUser(JSON.parse(userData));
     }
-    fetchTasks();
+    fetchTasks({ silent: false });
 
-    const interval = setInterval(fetchTasks, 3000);
+    const interval = setInterval(() => fetchTasks({ silent: true }), 3000);
     return () => clearInterval(interval);
   }, [statusFilter, fetchTasks]);
 
   const handleTaskCreated = async () => {
-    await fetchTasks();
+    await fetchTasks({ silent: true });
   };
 
   const handleTaskDeleted = async (taskId) => {
     try {
       await taskAPI.deleteTask(taskId);
-      setTasks(tasks.filter(t => t._id !== taskId));
+      if (
+        expandedLogTaskIdRef.current != null &&
+        String(expandedLogTaskIdRef.current) === String(taskId)
+      ) {
+        setLogPanelTaskId(null);
+      }
+      setTasks((prev) => prev.filter((t) => t._id !== taskId));
     } catch (err) {
       setError('Failed to delete task');
     }
@@ -79,7 +106,10 @@ function Dashboard() {
             <select
               id="status-filter"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setLogPanelTaskId(null);
+              }}
             >
               <option value="">All</option>
               <option value="pending">Pending</option>
@@ -90,15 +120,22 @@ function Dashboard() {
           </div>
 
           {error && <div className="error-message">{error}</div>}
-          
-          {loading && <div className="loading">Loading tasks...</div>}
-          
+
+          {loading && tasks.length === 0 && (
+            <div className="loading">Loading tasks...</div>
+          )}
+
           {!loading && tasks.length === 0 && (
             <div className="no-tasks">No tasks found. Create one to get started!</div>
           )}
-          
-          {!loading && tasks.length > 0 && (
-            <TaskList tasks={tasks} onTaskDeleted={handleTaskDeleted} />
+
+          {tasks.length > 0 && (
+            <TaskList
+              tasks={tasks}
+              onTaskDeleted={handleTaskDeleted}
+              expandedTaskId={expandedLogTaskId}
+              onLogPanelTaskId={setLogPanelTaskId}
+            />
           )}
         </div>
       </div>

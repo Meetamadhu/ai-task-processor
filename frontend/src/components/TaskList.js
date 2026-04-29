@@ -1,15 +1,9 @@
 // src/components/TaskList.js
-import React, { useState } from 'react';
+import React from 'react';
 import TaskCard from './TaskCard';
 import '../styles/TaskList.css';
 
-function TaskList({ tasks, onTaskDeleted }) {
-  const [expandedTaskId, setExpandedTaskId] = useState(null);
-
-  const toggleExpand = (taskId) => {
-    setExpandedTaskId(expandedTaskId === taskId ? null : taskId);
-  };
-
+function TaskList({ tasks, onTaskDeleted, expandedTaskId, onLogPanelTaskId }) {
   return (
     <div className="task-list">
       <h2>Your Tasks ({tasks.length})</h2>
@@ -18,8 +12,8 @@ function TaskList({ tasks, onTaskDeleted }) {
           <TaskCard
             key={task._id}
             task={task}
-            isExpanded={expandedTaskId === task._id}
-            onToggleExpand={() => toggleExpand(task._id)}
+            isExpanded={String(expandedTaskId) === String(task._id)}
+            onLogPanelTaskId={onLogPanelTaskId}
             onTaskDeleted={onTaskDeleted}
           />
         ))}

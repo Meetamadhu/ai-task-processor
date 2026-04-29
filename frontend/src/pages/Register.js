@@ -1,7 +1,7 @@
 // src/pages/Register.js
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authAPI } from '../services/api';
+import { authAPI, getApiErrorMessage } from '../services/api';
 import '../styles/Auth.css';
 
 function Register({ setIsAuthenticated }) {
@@ -24,7 +24,8 @@ function Register({ setIsAuthenticated }) {
       setIsAuthenticated(true);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(getApiErrorMessage(err, 'Registration failed'));
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }

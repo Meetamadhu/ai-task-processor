@@ -1,7 +1,7 @@
 // src/pages/Login.js
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authAPI } from '../services/api';
+import { authAPI, getApiErrorMessage } from '../services/api';
 import '../styles/Auth.css';
 
 function Login({ setIsAuthenticated }) {
@@ -23,7 +23,8 @@ function Login({ setIsAuthenticated }) {
       setIsAuthenticated(true);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(getApiErrorMessage(err, 'Login failed'));
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }

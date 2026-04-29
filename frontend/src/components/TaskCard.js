@@ -1,25 +1,41 @@
 // src/components/TaskCard.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { taskAPI } from '../services/api';
 import '../styles/TaskCard.css';
 
-function TaskCard({ task, isExpanded, onToggleExpand, onTaskDeleted }) {
+function TaskCard({ task, isExpanded, onLogPanelTaskId, onTaskDeleted }) {
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState('');
+  /** Keeps the logs panel open across parent re-renders / poll timing; syncs down when parent clears expansion. */
+  const [logsPanelOpen, setLogsPanelOpen] = useState(false);
+
+  useEffect(() => {
+    if (isExpanded || logsLoading) return undefined;
+    if (!logsPanelOpen) return undefined;
+    const id = setTimeout(() => setLogsPanelOpen(false), 400);
+    return () => clearTimeout(id);
+  }, [isExpanded, logsLoading, logsPanelOpen]);
 
   const handleViewLogs = async () => {
-    if (isExpanded) {
-      onToggleExpand();
+    if (logsPanelOpen) {
+      setLogsPanelOpen(false);
+      onLogPanelTaskId(null);
+      setLogsError('');
       return;
     }
 
+    setLogsPanelOpen(true);
+    onLogPanelTaskId(task._id);
+    setLogsError('');
     try {
       setLogsLoading(true);
       const response = await taskAPI.getTaskLogs(task._id);
       setLogs(response.data.logs);
-      onToggleExpand();
     } catch (error) {
       console.error('Failed to fetch logs:', error);
+      setLogsError('Could not load logs. Try again.');
+      setLogs([]);
     } finally {
       setLogsLoading(false);
     }
@@ -72,12 +88,12 @@ function TaskCard({ task, isExpanded, onToggleExpand, onTaskDeleted }) {
       </div>
 
       <div className="task-actions">
-        <button 
+        <button
           onClick={handleViewLogs}
           className="logs-btn"
           disabled={logsLoading}
         >
-          {isExpanded ? 'Hide' : 'View'} Logs
+          {logsPanelOpen ? 'Hide' : 'View'} Logs
         </button>
         <button 
           onClick={handleDelete}
@@ -87,11 +103,13 @@ function TaskCard({ task, isExpanded, onToggleExpand, onTaskDeleted }) {
         </button>
       </div>
 
-      {isExpanded && (
+      {logsPanelOpen && (
         <div className="task-logs">
           <h4>Task Logs</h4>
           {logsLoading ? (
             <p>Loading logs...</p>
+          ) : logsError ? (
+            <p className="error">{logsError}</p>
           ) : logs.length === 0 ? (
             <p>No logs available</p>
           ) : (

@@ -16,7 +16,7 @@ if (!process.env.JWT_SECRET || String(process.env.JWT_SECRET).trim() === '') {
 /** Strip accidental wrapping quotes from Render / shell paste */
 function trimEnvUri(uri) {
   let s = String(uri || '').trim();
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith('\'') && s.endsWith('\''))) {
     s = s.slice(1, -1).trim();
   }
   return s;
@@ -172,11 +172,11 @@ const redisUrl = resolveRedisUrl();
 const redisOptions = redisUrl
   ? { url: redisUrl }
   : {
-      socket: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT, 10) || 6379,
-      },
-    };
+    socket: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+    },
+  };
 
 if (!redisUrl && (!process.env.REDIS_HOST || process.env.REDIS_HOST === 'localhost')) {
   // eslint-disable-next-line no-console

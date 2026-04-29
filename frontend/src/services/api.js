@@ -26,6 +26,30 @@ const api = axios.create({
   }
 });
 
+function isAuthLoginOrRegister(config) {
+  const path = String(config?.url || '');
+  const base = String(config?.baseURL || '');
+  const combined = `${base}${path}`;
+  return /\/auth\/(login|register)(\?|$|#)/.test(path) || /\/auth\/(login|register)(\?|$|#)/.test(combined);
+}
+
+export function getApiErrorMessage(err, fallback) {
+  const status = err.response?.status;
+  const data = err.response?.data;
+  if (typeof data === 'string' && data.trim()) return data.trim();
+  if (data?.error) return String(data.error);
+  if (data?.message) return String(data.message);
+  if (status === 429) {
+    return 'Too many requests. Wait a few minutes and try again.';
+  }
+  const network = err.code === 'ERR_NETWORK' || err.message === 'Network Error';
+  if (network) {
+    const base = resolveApiBaseUrl();
+    return `Cannot reach the API (${base}). Start the backend, or set REACT_APP_API_URL in frontend/.env.local (e.g. http://localhost:5000/api).`;
+  }
+  return err.message || fallback;
+}
+
 // Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
@@ -38,11 +62,14 @@ api.interceptors.request.use((config) => {
 // Handle response errors
 let redirecting401 = false;
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    redirecting401 = false;
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
-      const reqUrl = String(error.config?.url || '');
-      if (reqUrl.includes('/auth/login') || reqUrl.includes('/auth/register')) {
+      const cfg = error.config;
+      if (isAuthLoginOrRegister(cfg)) {
         return Promise.reject(error);
       }
       const path = typeof window !== 'undefined' ? window.location.pathname : '';
@@ -61,12 +88,18 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API calls
+// Auth: clear stale session before login/register so the request interceptor never attaches an old JWT.
 export const authAPI = {
-  register: (email, password, name) => 
-    api.post('/auth/register', { email, password, name }),
-  login: (email, password) => 
-    api.post('/auth/login', { email, password })
+  register: (email, password, name) => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return api.post('/auth/register', { email, password, name });
+  },
+  login: (email, password) => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return api.post('/auth/login', { email, password });
+  }
 };
 
 // Task API calls
