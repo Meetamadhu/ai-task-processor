@@ -1,5 +1,5 @@
 // src/pages/Dashboard.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { taskAPI } from '../services/api';
 import TaskForm from '../components/TaskForm';
@@ -14,19 +14,7 @@ function Dashboard() {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-    fetchTasks();
-    
-    // Poll for task updates every 3 seconds
-    const interval = setInterval(fetchTasks, 3000);
-    return () => clearInterval(interval);
-  }, [statusFilter]);
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
       const response = await taskAPI.getTasks(statusFilter || undefined);
@@ -38,7 +26,18 @@ function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+    fetchTasks();
+
+    const interval = setInterval(fetchTasks, 3000);
+    return () => clearInterval(interval);
+  }, [statusFilter, fetchTasks]);
 
   const handleTaskCreated = async () => {
     await fetchTasks();
