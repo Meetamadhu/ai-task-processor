@@ -4,17 +4,33 @@ import axios from 'axios';
 /**
  * Default: same-origin `/api` on Vercel (rewrites proxy to Render — avoids CORS).
  * Local dev: `http://localhost:5000/api` unless REACT_APP_API_URL is set.
- * Override: set REACT_APP_API_URL to full URL (cross-origin; backend CORS must allow your UI).
+ * On a deployed host, if REACT_APP_API_URL points at another origin (e.g. Render), it is ignored
+ * and same-origin `/api` is used so vercel.json rewrites handle the hop.
  */
+function normalizeEnvApiUrl(raw) {
+  let s = String(raw || '').trim();
+  s = s.replace(/^["']+|["']+$/g, '').trim();
+  s = s.replace(/[,.;]+$/g, '').trim();
+  s = s.replace(/\/$/, '');
+  return s;
+}
+
 function resolveApiBaseUrl() {
-  const fromEnv = (process.env.REACT_APP_API_URL || '').trim().replace(/\/$/, '');
+  const fromEnv = normalizeEnvApiUrl(process.env.REACT_APP_API_URL);
   if (typeof window !== 'undefined') {
     const { hostname, origin } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return fromEnv || 'http://localhost:5000/api';
     }
-    if (fromEnv) return fromEnv;
-    return `${origin}/api`.replace(/\/$/, '');
+    const sameOriginApi = `${origin}/api`.replace(/\/$/, '');
+    if (!fromEnv) return sameOriginApi;
+    try {
+      const u = new URL(fromEnv);
+      if (u.origin !== origin) return sameOriginApi;
+      return fromEnv;
+    } catch {
+      return sameOriginApi;
+    }
   }
   return fromEnv || 'http://localhost:5000/api';
 }
@@ -45,7 +61,14 @@ export function getApiErrorMessage(err, fallback) {
   const network = err.code === 'ERR_NETWORK' || err.message === 'Network Error';
   if (network) {
     const base = resolveApiBaseUrl();
-    return `Cannot reach the API (${base}). Start the backend, or set REACT_APP_API_URL in frontend/.env.local (e.g. http://localhost:5000/api).`;
+    const deployed =
+      typeof window !== 'undefined' &&
+      window.location.hostname !== 'localhost' &&
+      window.location.hostname !== '127.0.0.1';
+    const hint = deployed
+      ? ' Confirm vercel.json rewrites /api to your backend. Remove REACT_APP_API_URL from Vercel if it points at Render (use same-origin /api).'
+      : ' Start the backend or set REACT_APP_API_URL in frontend/.env.local (e.g. http://localhost:5000/api).';
+    return `Cannot reach the API (${base}).${hint}`;
   }
   return err.message || fallback;
 }
