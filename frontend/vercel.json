@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "create-react-app",
-  "buildCommand": "npm run build",
   "installCommand": "npm ci",
-  "outputDirectory": "build",
+  "buildCommand": "npm run build && node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.cpSync('build','dist',{recursive:true})\"",
+  "outputDirectory": "dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

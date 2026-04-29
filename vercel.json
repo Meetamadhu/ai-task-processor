@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install --prefix frontend",
-  "buildCommand": "npm run build --prefix frontend",
-  "outputDirectory": "frontend/build",
+  "buildCommand": "npm run build --prefix frontend && node -e \"const fs=require('fs'); fs.rmSync('frontend/dist',{recursive:true,force:true}); fs.cpSync('frontend/build','frontend/dist',{recursive:true})\"",
+  "outputDirectory": "frontend/dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
