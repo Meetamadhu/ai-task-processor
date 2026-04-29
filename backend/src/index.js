@@ -19,10 +19,29 @@ const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
+function normalizeOrigin(url) {
+  if (!url || typeof url !== 'string') return '';
+  return url.trim().replace(/\/$/, '');
+}
+
+function allowedFrontendOrigins() {
+  const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
+  return raw.split(',').map(normalizeOrigin).filter(Boolean);
+}
+
+// Security middleware — CORP same-origin breaks browser fetches from Vercel → API
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+    const allowed = allowedFrontendOrigins();
+    if (allowed.includes(normalizeOrigin(origin))) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
   credentials: true
 }));
 
