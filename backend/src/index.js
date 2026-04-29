@@ -65,6 +65,12 @@ function allowedFrontendOrigins() {
   return raw.split(',').map(normalizeOrigin).filter(Boolean);
 }
 
+/** Production + preview deploys on *.vercel.app (Origin must match browser exactly). */
+function isVercelAppOrigin(origin) {
+  const n = normalizeOrigin(origin);
+  return /^https:\/\/.+\.vercel\.app$/i.test(n);
+}
+
 // Security middleware — CORP same-origin breaks browser fetches from Vercel → API
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
@@ -72,20 +78,29 @@ app.use(cors({
     if (!origin) {
       return callback(null, true);
     }
+    const n = normalizeOrigin(origin);
     const allowed = allowedFrontendOrigins();
-    if (allowed.includes(normalizeOrigin(origin))) {
+    if (allowed.includes(n)) {
       return callback(null, true);
     }
+    if (isVercelAppOrigin(origin)) {
+      return callback(null, true);
+    }
+    // eslint-disable-next-line no-console
+    console.warn(`CORS rejected Origin="${origin}"; set FRONTEND_URL on API or use a *.vercel.app URL. Allowed list: ${allowed.join(', ') || '(none)'}`);
     return callback(null, false);
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
 }));
 
-// Rate limiting
+// Rate limiting (skip OPTIONS so CORS preflight is never rate-limited)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: 'Too many requests from this IP, please try again later.'
+  message: 'Too many requests from this IP, please try again later.',
+  skip: (req) => req.method === 'OPTIONS',
 });
 app.use('/api/', limiter);
 
