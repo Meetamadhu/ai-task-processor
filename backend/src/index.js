@@ -49,6 +49,12 @@ const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
+// Render / nginx / Vercel edge sit behind a reverse proxy (X-Forwarded-For).
+// express-rate-limit requires trust proxy or it throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+if (process.env.NODE_ENV === 'production' || process.env.TRUST_PROXY === '1') {
+  app.set('trust proxy', 1);
+}
+
 function normalizeOrigin(url) {
   if (!url || typeof url !== 'string') return '';
   return url.trim().replace(/\/$/, '');
