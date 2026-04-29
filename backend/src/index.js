@@ -218,9 +218,21 @@ app.use((err, req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`Server running on port ${PORT}`);
+});
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    // eslint-disable-next-line no-console
+    console.error(
+      `FATAL: Port ${PORT} is already in use (e.g. Docker backend: docker compose stop backend). Or run only one stack, or set PORT=5001 and point the frontend API URL at that port.`
+    );
+  } else {
+    // eslint-disable-next-line no-console
+    console.error(err);
+  }
+  process.exit(1);
 });
 
 module.exports = app;
