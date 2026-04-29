@@ -36,11 +36,25 @@ api.interceptors.request.use((config) => {
 });
 
 // Handle response errors
+let redirecting401 = false;
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      const reqUrl = String(error.config?.url || '');
+      if (reqUrl.includes('/auth/login') || reqUrl.includes('/auth/register')) {
+        return Promise.reject(error);
+      }
+      const path = typeof window !== 'undefined' ? window.location.pathname : '';
+      if (path === '/login' || path === '/register') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return Promise.reject(error);
+      }
+      if (redirecting401) return Promise.reject(error);
+      redirecting401 = true;
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
