@@ -19,7 +19,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Environment variables
+# Environment variables — prefer full Redis URL (Render/Railway)
+def _redis_url():
+    for key in ('REDIS_URL', 'REDISCLOUD_URL', 'REDIS_TLS_URL'):
+        v = os.getenv(key)
+        if v and str(v).strip():
+            return str(v).strip()
+    return None
+
+
+REDIS_URL = _redis_url()
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/ai-task-processor')
@@ -27,11 +36,14 @@ MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/ai-task-proces
 class TaskProcessor:
     def __init__(self):
         """Initialize Redis and MongoDB connections"""
-        self.redis_client = redis.Redis(
-            host=REDIS_HOST,
-            port=REDIS_PORT,
-            decode_responses=True
-        )
+        if REDIS_URL:
+            self.redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+        else:
+            self.redis_client = redis.Redis(
+                host=REDIS_HOST,
+                port=REDIS_PORT,
+                decode_responses=True
+            )
         
         self.mongo_client = MongoClient(MONGODB_URI)
         self.db = self.mongo_client['ai-task-processor']

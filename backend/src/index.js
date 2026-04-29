@@ -52,13 +52,35 @@ mongoose.connect(process.env.MONGODB_URI, {
     console.error('MongoDB connection error:', err);
   });
 
-// Redis Connection
-const redisClient = redis.createClient({
-  socket: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT) || 6379,
+// Redis: use full URL if set (Render/Railway). Empty REDIS_URL must not fall back silently.
+function resolveRedisUrl() {
+  const candidates = [
+    process.env.REDIS_URL,
+    process.env.REDISCLOUD_URL,
+    process.env.REDIS_TLS_URL,
+  ];
+  for (const c of candidates) {
+    if (c && String(c).trim() !== '') return String(c).trim();
   }
-});
+  return '';
+}
+
+const redisUrl = resolveRedisUrl();
+const redisOptions = redisUrl
+  ? { url: redisUrl }
+  : {
+      socket: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+      },
+    };
+
+if (!redisUrl && (!process.env.REDIS_HOST || process.env.REDIS_HOST === 'localhost')) {
+  // eslint-disable-next-line no-console
+  console.warn('Redis: REDIS_URL is not set; using localhost:6379 (set REDIS_URL on Render).');
+}
+
+const redisClient = redis.createClient(redisOptions);
 
 redisClient.on('error', (err) => {
   // eslint-disable-next-line no-console
