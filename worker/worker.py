@@ -19,6 +19,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def _trim_uri(value):
+    if not value:
+        return ""
+    s = str(value).strip()
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        s = s[1:-1].strip()
+    return s
+
+
+def _build_mongo_uri():
+    uri = _trim_uri(os.getenv("MONGODB_URI"))
+    if not uri:
+        return "mongodb://localhost:27017/ai-task-processor"
+    auth = _trim_uri(os.getenv("MONGODB_AUTH_SOURCE", ""))
+    if auth and "authSource=" not in uri:
+        sep = "&" if "?" in uri else "?"
+        from urllib.parse import quote
+        return f"{uri}{sep}authSource={quote(auth, safe='')}"
+    return uri
+
+
 # Environment variables — prefer full Redis URL (Render/Railway)
 def _redis_url():
     for key in ('REDIS_URL', 'REDISCLOUD_URL', 'REDIS_TLS_URL'):
@@ -31,7 +53,7 @@ def _redis_url():
 REDIS_URL = _redis_url()
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/ai-task-processor')
+MONGODB_URI = _build_mongo_uri()
 
 class TaskProcessor:
     def __init__(self):

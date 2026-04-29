@@ -13,6 +13,36 @@ if (!process.env.JWT_SECRET || String(process.env.JWT_SECRET).trim() === '') {
   process.exit(1);
 }
 
+/** Strip accidental wrapping quotes from Render / shell paste */
+function trimEnvUri(uri) {
+  let s = String(uri || '').trim();
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
+/** Append authSource when Atlas user authenticates against `admin` (common). */
+function buildMongoUri() {
+  let uri = trimEnvUri(process.env.MONGODB_URI);
+  if (!uri) return '';
+  const authSource = trimEnvUri(process.env.MONGODB_AUTH_SOURCE);
+  if (authSource && !/([?&])authSource=/.test(uri)) {
+    const sep = uri.includes('?') ? '&' : '?';
+    uri += `${sep}authSource=${encodeURIComponent(authSource)}`;
+  }
+  return uri;
+}
+
+/** Log host + user only (never password). */
+function maskMongoUri(uri) {
+  if (!uri) return '(empty)';
+  return uri.replace(
+    /^(mongodb(?:\+srv)?:\/\/)([^:/?#]+):([^@]+)@/i,
+    (_, proto, user) => `${proto}${user}:***@`
+  );
+}
+
 const authRoutes = require('./routes/auth');
 const taskRoutes = require('./routes/tasks');
 const { authenticateToken } = require('./middleware/auth');
@@ -58,7 +88,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI, {
+const mongoUri = buildMongoUri();
+if (!mongoUri) {
+  // eslint-disable-next-line no-console
+  console.error('FATAL: MONGODB_URI must be set to a non-empty connection string');
+  process.exit(1);
+}
+// eslint-disable-next-line no-console
+console.log('MongoDB URI (masked):', maskMongoUri(mongoUri));
+
+mongoose.connect(mongoUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
@@ -69,6 +108,14 @@ mongoose.connect(process.env.MONGODB_URI, {
   .catch((err) => {
     // eslint-disable-next-line no-console
     console.error('MongoDB connection error:', err);
+    const msg = String(err.message || '');
+    if (msg.includes('bad auth') || err.code === 8000) {
+      // eslint-disable-next-line no-console
+      console.error(
+        'Atlas auth failed: verify Database User + password in MONGODB_URI (URL-encode @#:/ in password), '
+        + 'Network Access allows Render (try 0.0.0.0/0 for testing), and add MONGODB_AUTH_SOURCE=admin on Render if your user uses the admin auth database.'
+      );
+    }
   });
 
 // Redis: use full URL if set (Render/Railway). Empty REDIS_URL must not fall back silently.
