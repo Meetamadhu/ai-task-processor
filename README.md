@@ -318,8 +318,7 @@ Workflow: `.github/workflows/build-deploy.yml`.
 |-------------------|---------|
 | `DOCKER_USERNAME`, `DOCKER_PASSWORD` | Push images to Docker Hub |
 | `INFRA_REPO` | GitHub repo slug for manifests (e.g. `your-org/ai-task-processor-infra`) |
-| `INFRA_DEPLOY_TOKEN` | **PAT** with `contents: write` on the **infra** repo (default `GITHUB_TOKEN` cannot push cross-repo) |
-| `INFRA_GIT_USER` | *(Optional)* GitHub username of the account that **created** the PAT. If unset, the workflow uses `GITHUB_ACTOR` (the user who triggered the run). Set this if push still returns 403 with a fine-grained token. |
+| `INFRA_DEPLOY_TOKEN` | **PAT** with `contents: write` on the **infra** repo (used as `GH_TOKEN` + `gh auth setup-git` for push). |
 | Repository variable `REACT_APP_API_URL` | **Optional** — public API base URL baked into the frontend at **Docker build** (e.g. `https://api.example.com/api`). If unset, CI defaults to `http://localhost:5000/api`. |
 
 Lint runs first; image build/push runs only if lint passes. On `main`, the workflow bumps `newTag` (and Docker Hub `newName` prefix) in `infra-repo/k8s/kustomization.yaml` and pushes to `main`.
