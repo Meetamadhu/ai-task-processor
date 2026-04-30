@@ -138,7 +138,7 @@ jobs:
           repository: ${{ secrets.INFRA_REPO }}
           token: ${{ secrets.INFRA_DEPLOY_TOKEN }}
           path: infra
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Bump Kustomize image registry and tag
         working-directory: infra
@@ -178,14 +178,13 @@ jobs:
         env:
           GIT_SHA: ${{ github.sha }}
           INFRA_REPO: ${{ secrets.INFRA_REPO }}
-          GH_TOKEN: ${{ secrets.INFRA_DEPLOY_TOKEN }}
+          INFRA_DEPLOY_TOKEN: ${{ secrets.INFRA_DEPLOY_TOKEN }}
+          INFRA_GIT_USER: ${{ secrets.INFRA_GIT_USER }}
         run: |
           set -euo pipefail
           REPO_SLUG="${INFRA_REPO%.git}"
           REPO_SLUG="$(printf '%s' "$REPO_SLUG" | tr -d '\r\n' | sed 's/[[:space:]]*$//;s/^[[:space:]]*//')"
-          # Clean HTTPS remote + gh credential helper (reliable for fine-grained PATs; URL-embedded tokens often get 403).
           git remote set-url origin "https://github.com/${REPO_SLUG}.git"
-          gh auth setup-git
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add k8s/kustomization.yaml
@@ -194,4 +193,7 @@ jobs:
             exit 0
           fi
           git commit -m "ci: bump container image tag to ${GIT_SHA}"
-          git push origin HEAD
+          # One-shot Basic auth (GitHub HTTPS PAT). Avoids gh/GITHUB_TOKEN fighting the infra PAT (often causes exit 128 / 403).
+          GIT_USER="${INFRA_GIT_USER:-${GITHUB_ACTOR}}"
+          BASIC_B64="$(printf '%s:%s' "$GIT_USER" "$INFRA_DEPLOY_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${BASIC_B64}" push origin HEAD
