@@ -154,8 +154,21 @@ jobs:
               text = f.read()
           user = os.environ["DOCKER_USERNAME"].strip()
           sha = os.environ["GIT_SHA"].strip()
-          text = re.sub(r"docker\.io/your-username", f"docker.io/{user}", text)
-          text = re.sub(r"(?m)^    newTag:.*$", f"    newTag: {sha}", text)
+          if not user or not sha:
+              raise SystemExit("DOCKER_USERNAME or GIT_SHA empty")
+          # Idempotent: set registry owner on each image line (works after first bump too).
+          def repl_newname(m):
+              indent, image = m.group(1), m.group(2)
+              return f"{indent}docker.io/{user}/{image}"
+          text2 = re.sub(
+              r"^(\s*newName:\s*)docker\.io/[^\s]+/(ai-task-processor-(?:frontend|backend|worker))\s*$",
+              repl_newname,
+              text,
+              flags=re.MULTILINE,
+          )
+          text = text2
+          # Bump every image newTag to this build SHA (same indent as file).
+          text = re.sub(r"(?m)^(\s*)newTag:.*$", rf"\1newTag: {sha}", text)
           with open(path, "w", encoding="utf-8") as f:
               f.write(text)
           PY
@@ -182,4 +195,5 @@ jobs:
             exit 0
           fi
           git commit -m "ci: bump container image tag to ${GIT_SHA}"
-          git push origin HEAD:main
+          # Push current branch (usually main) — avoids hard-coding :main if default branch differs.
+          git push origin HEAD
