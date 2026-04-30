@@ -59,6 +59,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify Docker Hub secrets
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASS: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          if [ -z "$DOCKER_USER" ] || [ -z "$DOCKER_PASS" ]; then
+            echo "::error::Missing GitHub Actions secrets. Add DOCKER_USERNAME and DOCKER_PASSWORD under Settings → Secrets and variables → Actions. Use a Docker Hub access token as DOCKER_PASSWORD if login fails."
+            exit 1
+          fi
+
       - name: Set frontend build API URL
         id: fe_api
         env:
