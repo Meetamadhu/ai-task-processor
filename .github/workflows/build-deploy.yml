@@ -122,6 +122,16 @@ jobs:
     needs: build-and-push
     if: github.ref == 'refs/heads/main'
     steps:
+      - name: Verify infra secrets (must be on this repo, not infra-repo)
+        env:
+          INFRA_REPO: ${{ secrets.INFRA_REPO }}
+          INFRA_DEPLOY_TOKEN: ${{ secrets.INFRA_DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$INFRA_REPO" ] || [ -z "$INFRA_DEPLOY_TOKEN" ]; then
+            echo "::error::INFRA_REPO and/or INFRA_DEPLOY_TOKEN are empty in this workflow. Add both under Settings → Secrets and variables → Actions on **this** repository (${{ github.repository }}). If they are organization secrets, open the secret and allow access to this repository. Re-run the job after saving."
+            exit 1
+          fi
+
       - name: Checkout infrastructure repository
         uses: actions/checkout@v4
         with:
