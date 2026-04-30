@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '18'
 
@@ -28,7 +28,7 @@ jobs:
         run: cd backend && npm ci && npm run lint
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Verify Docker Hub secrets
         env:
@@ -81,17 +81,17 @@ jobs:
           echo "react_app_api_url=$FE_URL" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image (backend, worker)
         if: matrix.service.name != 'frontend'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.service.path }}
           file: ${{ matrix.service.path }}/${{ matrix.service.dockerfile }}
@@ -104,7 +104,7 @@ jobs:
 
       - name: Build and push Docker image (frontend)
         if: matrix.service.name == 'frontend'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.service.path }}
           file: ${{ matrix.service.path }}/${{ matrix.service.dockerfile }}
@@ -133,7 +133,7 @@ jobs:
           fi
 
       - name: Checkout infrastructure repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ secrets.INFRA_REPO }}
           token: ${{ secrets.INFRA_DEPLOY_TOKEN }}
